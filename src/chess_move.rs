@@ -2,44 +2,114 @@ use crate::{
     board::BoardGame,
     piece::{PieceColor, PieceType},
 };
+use std::fmt;
 
-#[derive(PartialEq)]
+#[derive(Debug)]
+pub enum MoveError {
+    OutOfBounds,
+    NoPieceAtSource,
+    SamePosition,
+    CaptureOwnPiece,
+    InvalidPawnCapture,
+    InvalidPawnMove,
+    InvalidRookMove,
+    InvalidKnightMove,
+    InvalidBishopMove,
+    InvalidKingMove,
+    InvalidQueenMove,
+    PieceBlocking,
+}
+
+#[derive(PartialEq, Clone, Copy)]
 pub struct Position {
-    row: usize,
-    column: usize,
+    pub row: usize,
+    pub column: usize,
 }
 
-pub struct ChessMove {
-    from: Position,
-    to: Position,
-}
-
-pub fn is_valid_move(move_: ChessMove, piece_type: &PieceType, board: &BoardGame) -> bool {
-    fn within_bounds(position: &Position) -> bool {
-        position.row >= 0 && position.row <= 7 && position.column >= 0 && position.column <= 7
-    }
-
-    // Check if in boundaries
-    if !within_bounds(&move_.from) || !within_bounds(&move_.to) {
-        return false;
-    }
-
-    // Verify there is a piece to move
-    let piece = match board[move_.from.row][move_.from.column] {
-        Some(piece) => piece,
-        None => return false,
+fn parse_position(input: &str) -> Result<Position, &'static str> {
+    let column = match input.chars().nth(0) {
+        Some(c) => match c {
+            'a' => 0,
+            'b' => 1,
+            'c' => 2,
+            'd' => 3,
+            'e' => 4,
+            'f' => 5,
+            'g' => 6,
+            'h' => 7,
+            _ => return Err("Invalid column"),
+        },
+        None => return Err("Input too short"),
     };
 
-    // Verify if the piece is moving
-    if move_.to == move_.from {
-        return false;
+    let row = match input.chars().nth(1) {
+        Some(c) => match c.to_digit(10) {
+            Some(d) if d >= 1 && d <= 8 => 8 - d as usize, // Convert to 0-7 index, inverted
+            _ => return Err("Invalid row"),
+        },
+        None => return Err("Input too short"),
+    };
+
+    Ok(Position { row, column })
+}
+
+pub fn parse_move(input: &str) -> Result<ChessMove, &'static str> {
+    if input.len() != 4 {
+        return Err("Invalid move format. Please use format like 'e2e4'");
     }
 
-    // Verify if there there is an ally piece at destination
-    let capture: bool = match board[move_.to.row][move_.to.column] {
+    let from = parse_position(&input[0..2])?;
+    let to = parse_position(&input[2..4])?;
+
+    Ok(ChessMove { from, to })
+}
+
+#[derive(Clone)]
+pub struct ChessMove {
+    pub from: Position,
+    pub to: Position,
+}
+
+impl fmt::Display for ChessMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Convert column number (0-7) back to chess notation (a-h)
+        let from_col = (self.from.column as u8 + b'a') as char;
+        let to_col = (self.to.column as u8 + b'a') as char;
+
+        // Convert row number (0-7) back to chess notation (1-8)
+        let from_row = 8 - self.from.row;
+        let to_row = 8 - self.to.row;
+
+        write!(f, "{}{}{}{}", from_col, from_row, to_col, to_row)
+    }
+}
+
+pub fn is_valid_move(board: &BoardGame, move_: &ChessMove) -> Result<(), MoveError> {
+    fn within_bounds(position: &Position) -> bool {
+        position.row <= 7 && position.column <= 7
+    }
+
+    // Check boundaries
+    if !within_bounds(&move_.from) || !within_bounds(&move_.to) {
+        return Err(MoveError::OutOfBounds);
+    }
+
+    // Verify piece exists
+    let piece = match board[move_.from.row][move_.from.column] {
+        Some(piece) => piece,
+        None => return Err(MoveError::NoPieceAtSource),
+    };
+
+    // Verify movement
+    if move_.to == move_.from {
+        return Err(MoveError::SamePosition);
+    }
+
+    // Check for capture
+    let is_capture = match board[move_.to.row][move_.to.column] {
         Some(destination_piece) => {
             if piece.color == destination_piece.color {
-                return false;
+                return Err(MoveError::CaptureOwnPiece);
             }
             true
         }
@@ -48,61 +118,68 @@ pub fn is_valid_move(move_: ChessMove, piece_type: &PieceType, board: &BoardGame
 
     match piece.piece_type {
         PieceType::Pawn => {
-            if capture {
-                // TODO: capture "En passant"
-                if (piece.color == PieceColor::White)
-                    && !((move_.to.column == move_.from.column - 1
-                        || move_.to.column == move_.from.column + 1)
-                        && move_.to.row == move_.from.row - 1)
-                {
-                    return false;
+            if is_capture {
+                // Capture moves
+                match piece.color {
+                    PieceColor::White => {
+                        if !(move_.to.row == move_.from.row - 1
+                            && (move_.to.column == move_.from.column - 1
+                                || move_.to.column == move_.from.column + 1))
+                        {
+                            return Err(MoveError::InvalidPawnCapture);
+                        }
+                    }
+                    PieceColor::Black => {
+                        if !(move_.to.row == move_.from.row + 1
+                            && (move_.to.column == move_.from.column - 1
+                                || move_.to.column == move_.from.column + 1))
+                        {
+                            return Err(MoveError::InvalidPawnCapture);
+                        }
+                    }
                 }
-                if (piece.color == PieceColor::Black)
-                    && !((move_.to.column == move_.from.column - 1
-                        || move_.to.column == move_.from.column + 1)
-                        && move_.to.row == move_.from.row + 1)
-                {
-                    return false;
+            } else {
+                // Normal moves
+                match piece.color {
+                    PieceColor::White => {
+                        let valid_single_move = move_.to.row == move_.from.row - 1
+                            && move_.to.column == move_.from.column;
+
+                        let empty_blocking_cell =
+                            board[move_.from.row - 1][move_.from.column].is_none();
+                        let valid_double_move = move_.to.row == move_.from.row - 2
+                            && move_.to.column == move_.from.column
+                            && move_.from.row == 6
+                            && empty_blocking_cell;
+
+                        if !valid_single_move && !valid_double_move {
+                            return Err(MoveError::InvalidPawnMove);
+                        }
+                    }
+                    PieceColor::Black => {
+                        let valid_single_move = move_.to.row == move_.from.row + 1
+                            && move_.to.column == move_.from.column;
+
+                        let empty_blocking_cell =
+                            board[move_.from.row + 1][move_.from.column].is_none();
+                        let valid_double_move = move_.to.row == move_.from.row + 2
+                            && move_.to.column == move_.from.column
+                            && move_.from.row == 1
+                            && empty_blocking_cell;
+
+                        if !valid_single_move && !valid_double_move {
+                            return Err(MoveError::InvalidPawnMove);
+                        }
+                    }
                 }
-            }
-
-            if piece.color == PieceColor::White {
-                let valid_single_move =
-                    move_.to.row == move_.from.row - 1 && move_.to.column == move_.from.column;
-
-                let empty_blocking_cell = match board[move_.from.row - 1][move_.from.column] {
-                    Some(_) => false,
-                    None => true,
-                };
-                let valid_double_move = move_.to.row == move_.from.row - 2
-                    && move_.to.column == move_.from.column
-                    && empty_blocking_cell;
-
-                return valid_single_move || (valid_double_move && move_.from.row == 6);
-            }
-
-            if piece.color == PieceColor::Black {
-                let valid_single_move =
-                    move_.to.row == move_.from.row + 1 && move_.to.column == move_.from.column;
-
-                let empty_blocking_cell = match board[move_.from.row + 1][move_.from.column] {
-                    Some(_) => false,
-                    None => true,
-                };
-                let valid_double_move = move_.to.row == move_.from.row + 2
-                    && move_.to.column == move_.from.column
-                    && empty_blocking_cell;
-
-                return valid_single_move || (valid_double_move && move_.from.row == 1);
             }
         }
         PieceType::Rook => {
             let dx = (move_.to.column as i32 - move_.from.column as i32).signum();
             let dy = (move_.to.row as i32 - move_.from.row as i32).signum();
 
-            // Check if move is horizontal or vertical
             if dx != 0 && dy != 0 {
-                return false;
+                return Err(MoveError::InvalidRookMove);
             }
 
             let mut current = Position {
@@ -114,88 +191,79 @@ pub fn is_valid_move(move_: ChessMove, piece_type: &PieceType, board: &BoardGame
                 current.column = (current.column as i32 + dx) as usize;
                 current.row = (current.row as i32 + dy) as usize;
 
-                match board[current.row][current.column] {
-                    Some(_) => return false,
-                    None => (),
-                };
+                if let Some(_) = board[current.row][current.column] {
+                    return Err(MoveError::PieceBlocking);
+                }
             }
-            return true;
         }
         PieceType::Knight => {
             let row_diff = (move_.to.row as i32 - move_.from.row as i32).abs();
             let col_diff = (move_.to.column as i32 - move_.from.column as i32).abs();
 
             if !((row_diff == 2 && col_diff == 1) || (row_diff == 1 && col_diff == 2)) {
-                return false;
+                return Err(MoveError::InvalidKnightMove);
             }
-            return true;
         }
         PieceType::Bishop => {
             let row_diff = (move_.to.row as i32 - move_.from.row as i32).abs();
             let col_diff = (move_.to.column as i32 - move_.from.column as i32).abs();
 
-            // Moving in diagonal
-            if !(row_diff == col_diff) {
-                return false;
+            if row_diff != col_diff {
+                return Err(MoveError::InvalidBishopMove);
             }
 
-            // Check for blocking pieces
             let dx = (move_.to.column as i32 - move_.from.column as i32).signum();
             let dy = (move_.to.row as i32 - move_.from.row as i32).signum();
-            let mut current = move_.from;
+            let mut current = Position {
+                column: move_.from.column,
+                row: move_.from.row,
+            };
 
             while current != move_.to {
                 current.column = (current.column as i32 + dx) as usize;
                 current.row = (current.row as i32 + dy) as usize;
 
-                match board[current.row][current.column] {
-                    Some(_) => return false,
-                    None => (),
-                };
+                if let Some(_) = board[current.row][current.column] {
+                    return Err(MoveError::PieceBlocking);
+                }
             }
-
-            return true;
         }
         PieceType::King => {
-            // TODO: castle move
             let row_diff = (move_.to.row as i32 - move_.from.row as i32).abs();
             let col_diff = (move_.to.column as i32 - move_.from.column as i32).abs();
 
-            if !(row_diff <= 1 && col_diff <= 1) {
-                return false;
+            if row_diff > 1 || col_diff > 1 {
+                return Err(MoveError::InvalidKingMove);
             }
-            return true;
         }
         PieceType::Queen => {
             let dx = (move_.to.column as i32 - move_.from.column as i32).signum();
             let dy = (move_.to.row as i32 - move_.from.row as i32).signum();
-
-            let is_straight_move = (dx == 0 && dy != 0) || (dx != 0 && dy == 0);
-
             let row_diff = (move_.to.row as i32 - move_.from.row as i32).abs();
             let col_diff = (move_.to.column as i32 - move_.from.column as i32).abs();
 
-            let is_diagonal_move = row_diff == col_diff;
+            let is_straight = (dx == 0 && dy != 0) || (dx != 0 && dy == 0);
+            let is_diagonal = row_diff == col_diff;
 
-            // Check valid movement
-            if !(is_diagonal_move || is_straight_move) {
-                return false;
+            if !is_straight && !is_diagonal {
+                return Err(MoveError::InvalidQueenMove);
             }
 
-            let mut current = move_.from;
+            let mut current = Position {
+                column: move_.from.column,
+                row: move_.from.row,
+            };
 
             while current != move_.to {
                 current.column = (current.column as i32 + dx) as usize;
                 current.row = (current.row as i32 + dy) as usize;
 
-                match board[current.row][current.column] {
-                    Some(_) => return false,
-                    None => (),
-                };
+                if let Some(_) = board[current.row][current.column] {
+                    return Err(MoveError::PieceBlocking);
+                }
             }
-
-            return true;
         }
     }
-    true
+
+    Ok(())
 }

@@ -77,8 +77,4 @@ impl Piece {
     pub fn new(piece_type: PieceType, color: PieceColor) -> Piece {
         Piece { piece_type, color }
     }
-
-    pub fn move_piece(&mut self) {
-        return;
-    }
 }

@@ -1,4 +1,7 @@
-use crate::piece::{Piece, PieceColor, PieceType};
+use crate::{
+    chess_move::{ChessMove, Position, is_valid_move},
+    piece::{Piece, PieceColor, PieceType},
+};
 
 pub type BoardGame = [[Option<Piece>; 8]; 8];
 
@@ -13,8 +16,8 @@ pub fn print_board(board: &BoardGame) {
         }
         println!("");
     }
-    println!("  ---------------");
-    println!("  a b c d e f g h");
+    println!("  ----------------");
+    println!("   a b c d e f g h");
 }
 
 #[derive(Clone, Copy)]
@@ -22,7 +25,16 @@ pub enum BoardPosition {
     Standard,
     Empty,
 }
-
+pub fn make_move(board: &mut BoardGame, chess_move: &ChessMove) -> Result<(), String> {
+    match is_valid_move(board, chess_move) {
+        Ok(_) => {
+            let piece = board[chess_move.from.row][chess_move.from.column].take();
+            board[chess_move.to.row][chess_move.to.column] = piece;
+            Ok(())
+        }
+        Err(e) => Err(format!("Invalid move: {:?}", e)),
+    }
+}
 pub struct BoardFactory;
 
 impl BoardFactory {
