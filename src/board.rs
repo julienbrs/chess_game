@@ -48,31 +48,32 @@ impl BoardFactory {
     fn create_standard_position() -> BoardGame {
         let mut board_game = [[None; 8]; 8];
 
-        board_game[0][0] = Some(Piece::new(PieceType::Rook, PieceColor::White));
-        board_game[0][1] = Some(Piece::new(PieceType::Knight, PieceColor::White));
-        board_game[0][2] = Some(Piece::new(PieceType::Bishop, PieceColor::White));
-        board_game[0][3] = Some(Piece::new(PieceType::Queen, PieceColor::White));
-        board_game[0][4] = Some(Piece::new(PieceType::King, PieceColor::White));
-        board_game[0][5] = Some(Piece::new(PieceType::Bishop, PieceColor::White));
-        board_game[0][6] = Some(Piece::new(PieceType::Knight, PieceColor::White));
-        board_game[0][7] = Some(Piece::new(PieceType::Rook, PieceColor::White));
+        board_game[0][0] = Some(Piece::new(PieceType::Rook, PieceColor::Black));
+        board_game[0][1] = Some(Piece::new(PieceType::Knight, PieceColor::Black));
+        board_game[0][2] = Some(Piece::new(PieceType::Bishop, PieceColor::Black));
+        board_game[0][3] = Some(Piece::new(PieceType::Queen, PieceColor::Black));
+        board_game[0][4] = Some(Piece::new(PieceType::King, PieceColor::Black));
+        board_game[0][5] = Some(Piece::new(PieceType::Bishop, PieceColor::Black));
+        board_game[0][6] = Some(Piece::new(PieceType::Knight, PieceColor::Black));
+        board_game[0][7] = Some(Piece::new(PieceType::Rook, PieceColor::Black));
 
         for i in 0..8 {
-            board_game[1][i] = Some(Piece::new(PieceType::Pawn, PieceColor::White));
+            board_game[1][i] = Some(Piece::new(PieceType::Pawn, PieceColor::Black));
         }
 
         for i in 0..8 {
-            board_game[6][i] = Some(Piece::new(PieceType::Pawn, PieceColor::Black));
+            board_game[6][i] = Some(Piece::new(PieceType::Pawn, PieceColor::White));
         }
 
-        board_game[7][0] = Some(Piece::new(PieceType::Rook, PieceColor::Black));
-        board_game[7][1] = Some(Piece::new(PieceType::Knight, PieceColor::Black));
-        board_game[7][2] = Some(Piece::new(PieceType::Bishop, PieceColor::Black));
-        board_game[7][3] = Some(Piece::new(PieceType::Queen, PieceColor::Black));
-        board_game[7][4] = Some(Piece::new(PieceType::King, PieceColor::Black));
-        board_game[7][5] = Some(Piece::new(PieceType::Bishop, PieceColor::Black));
-        board_game[7][6] = Some(Piece::new(PieceType::Knight, PieceColor::Black));
-        board_game[7][7] = Some(Piece::new(PieceType::Rook, PieceColor::Black));
+        // Top rows (now Black pieces)
+        board_game[7][0] = Some(Piece::new(PieceType::Rook, PieceColor::White));
+        board_game[7][1] = Some(Piece::new(PieceType::Knight, PieceColor::White));
+        board_game[7][2] = Some(Piece::new(PieceType::Bishop, PieceColor::White));
+        board_game[7][3] = Some(Piece::new(PieceType::Queen, PieceColor::White));
+        board_game[7][4] = Some(Piece::new(PieceType::King, PieceColor::White));
+        board_game[7][5] = Some(Piece::new(PieceType::Bishop, PieceColor::White));
+        board_game[7][6] = Some(Piece::new(PieceType::Knight, PieceColor::White));
+        board_game[7][7] = Some(Piece::new(PieceType::Rook, PieceColor::White));
 
         board_game
     }
