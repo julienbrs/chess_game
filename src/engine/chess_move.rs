@@ -135,59 +135,51 @@ pub fn is_valid_move(board: &BoardGame, move_: &ChessMove) -> Result<(), MoveErr
 
     match piece.piece_type {
         PieceType::Pawn => {
+            let from_row = move_.from.row();
+            let from_col = move_.from.col();
+            let to_row = move_.to.row();
+            let to_col = move_.to.col();
+
+            let row_diff = to_row as i32 - from_row as i32;
+            let col_diff = to_col as i32 - from_col as i32;
+
+            let direction = match piece.color {
+                PieceColor::White => -1,
+                PieceColor::Black => 1,
+            };
+
+            let start_row = match piece.color {
+                PieceColor::White => 6,
+                PieceColor::Black => 1,
+            };
+
             if is_capture {
-                // Capture moves
-                match piece.color {
-                    PieceColor::White => {
-                        if !(move_.to.row() == move_.from.row() - 1
-                            && (move_.to.col() == move_.from.col() - 1
-                                || move_.to.col() == move_.from.col() + 1))
-                        {
-                            return Err(MoveError::InvalidPawnCapture);
-                        }
-                    }
-                    PieceColor::Black => {
-                        if !(move_.to.row() == move_.from.row() + 1
-                            && (move_.to.col() == move_.from.col() - 1
-                                || move_.to.col() == move_.from.col() + 1))
-                        {
-                            return Err(MoveError::InvalidPawnCapture);
-                        }
-                    }
+                // Diagonal capture: must move one square diagonally forward
+                if row_diff != direction || col_diff.abs() != 1 {
+                    return Err(MoveError::InvalidPawnCapture);
                 }
             } else {
-                // Normal moves
-                match piece.color {
-                    PieceColor::White => {
-                        let valid_single_move = move_.to.row() == move_.from.row() - 1
-                            && move_.to.col() == move_.from.col();
+                // Forward move: 1 or 2 squares straight ahead
+                if col_diff != 0 {
+                    return Err(MoveError::InvalidPawnMove);
+                }
 
-                        let empty_blocking_cell =
-                            board[move_.from.row() - 1][move_.from.col()].is_none();
-                        let valid_double_move = move_.to.row() == move_.from.row() - 2
-                            && move_.to.col() == move_.from.col()
-                            && move_.from.row() == 6
-                            && empty_blocking_cell;
-
-                        if !valid_single_move && !valid_double_move {
-                            return Err(MoveError::InvalidPawnMove);
-                        }
+                if row_diff == direction {
+                    // Single step
+                    if board[(from_row as i32 + direction) as usize][from_col].is_some() {
+                        return Err(MoveError::PieceBlocking);
                     }
-                    PieceColor::Black => {
-                        let valid_single_move = move_.to.row() == move_.from.row() + 1
-                            && move_.to.col() == move_.from.col();
+                } else if row_diff == 2 * direction && from_row == start_row {
+                    let intermediate_row = (from_row as i32 + direction) as usize;
+                    let target_row = (from_row as i32 + 2 * direction) as usize;
 
-                        let empty_blocking_cell =
-                            board[move_.from.row() + 1][move_.from.col()].is_none();
-                        let valid_double_move = move_.to.row() == move_.from.row() + 2
-                            && move_.to.col() == move_.from.col()
-                            && move_.from.row() == 1
-                            && empty_blocking_cell;
-
-                        if !valid_single_move && !valid_double_move {
-                            return Err(MoveError::InvalidPawnMove);
-                        }
+                    if board[intermediate_row][from_col].is_some()
+                        || board[target_row][from_col].is_some()
+                    {
+                        return Err(MoveError::PieceBlocking);
                     }
+                } else {
+                    return Err(MoveError::InvalidPawnMove);
                 }
             }
         }

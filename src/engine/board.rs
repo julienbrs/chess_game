@@ -25,15 +25,12 @@ pub enum BoardPosition {
     Standard,
     Empty,
 }
-pub fn make_move(board: &mut BoardGame, chess_move: &ChessMove) -> Result<(), String> {
-    match is_valid_move(board, chess_move) {
-        Ok(_) => {
-            let piece = board[chess_move.from.row][chess_move.from.column].take();
-            board[chess_move.to.row][chess_move.to.column] = piece;
-            Ok(())
-        }
-        Err(e) => Err(format!("Invalid move: {:?}", e)),
-    }
+pub fn make_move(board: &mut BoardGame, move_: &ChessMove) -> Result<(), String> {
+    is_valid_move(board, move_).map_err(|e| format!("Invalid move: {:?}", e))?;
+
+    let piece = board[move_.from.row()][move_.from.col()].take();
+    board[move_.to.row()][move_.to.col()] = piece;
+    Ok(())
 }
 pub struct BoardFactory;
 

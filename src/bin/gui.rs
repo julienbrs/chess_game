@@ -1,14 +1,14 @@
 use chess::engine::{
     board::{self, BoardFactory, BoardGame, BoardPosition, make_move, print_board},
-    chess_move::{ChessMove, Position, parse_move},
+    chess_move::{ChessMove, Square, parse_move},
     piece::{Piece, PieceColor, PieceType},
 };
-use egui::{Color32, Rect, Vec2, pos2};
+use egui::{Color32, Rect, Vec2};
 
 pub struct ChessUi {
     board: BoardGame,
-    selected_position: Option<Position>,
-    dragging_piece: Option<(Position, egui::Pos2)>,
+    selected_position: Option<Square>,
+    dragging_piece: Option<(Square, egui::Pos2)>,
     current_player: PieceColor,
 }
 
@@ -49,7 +49,7 @@ impl ChessUi {
                 painter.rect_filled(square_rect, 0.0, square_color);
 
                 if let Some(selected) = self.selected_position {
-                    if selected.row == row && selected.column == col {
+                    if selected.row() == row && selected.col() == col {
                         painter.rect_stroke(
                             square_rect,
                             0.0,
@@ -59,18 +59,15 @@ impl ChessUi {
                 }
 
                 if let Some(piece) = self.board[row][col] {
-                    let is_dragging = if let Some((drag_pos, _)) = self.dragging_piece {
-                        drag_pos.row == row && drag_pos.column == col
-                    } else {
-                        false
-                    };
+                    let is_dragging = self.dragging_piece.map_or(false, |(drag_sq, _)| {
+                        drag_sq.row() == row && drag_sq.col() == col
+                    });
 
                     if !is_dragging {
-                        let symbol = format!("{}", piece);
                         painter.text(
                             square_rect.center(),
                             egui::Align2::CENTER_CENTER,
-                            symbol.trim(),
+                            format!("{}", piece).trim(),
                             egui::FontId::proportional(square_size * 0.7),
                             if piece.color == PieceColor::White {
                                 Color32::WHITE
@@ -79,47 +76,31 @@ impl ChessUi {
                             },
                         );
                     }
-                };
+                }
             }
         }
 
         if let Some(mouse_pos) = ui.ctx().pointer_hover_pos() {
-            if mouse_pos.x >= board_rect.min.x
-                && mouse_pos.y >= board_rect.min.y
-                && mouse_pos.x <= board_rect.max.x
-                && mouse_pos.y <= board_rect.max.y
-            {
-                let board_x = ((mouse_pos.x - board_rect.min.x) / square_size) as usize;
-                let board_y = ((mouse_pos.y - board_rect.min.y) / square_size) as usize;
+            if board_rect.contains(mouse_pos) {
+                let col = ((mouse_pos.x - board_rect.min.x) / square_size) as u8;
+                let row = ((mouse_pos.y - board_rect.min.y) / square_size) as u8;
 
-                if board_x < 8 && board_y < 8 {
+                if let Ok(pos) = Square::try_from((row, col)) {
                     if ui.ctx().input(|i| i.pointer.primary_down()) && self.dragging_piece.is_none()
                     {
-                        if let Some(piece) = self.board[board_y][board_x] {
+                        if let Some(piece) = self.board[pos.row()][pos.col()] {
                             if piece.color == self.current_player {
-                                let position = Position {
-                                    row: board_y,
-                                    column: board_x,
-                                };
-                                self.dragging_piece = Some((position, mouse_pos));
-                                self.selected_position = Some(position);
+                                self.dragging_piece = Some((pos, mouse_pos));
+                                self.selected_position = Some(pos);
                             }
                         }
                     }
 
                     if ui.ctx().input(|i| i.pointer.primary_released()) {
-                        if let Some((from_pos, _)) = self.dragging_piece {
-                            let to_pos = Position {
-                                row: board_y,
-                                column: board_x,
-                            };
-
-                            if from_pos != to_pos {
-                                if self.handle_move(from_pos, to_pos) {
-                                    self.switch_player();
-                                }
+                        if let Some((from, _)) = self.dragging_piece {
+                            if from != pos && self.handle_move(from, pos) {
+                                self.switch_player();
                             }
-
                             self.dragging_piece = None;
                             self.selected_position = None;
                         }
@@ -128,16 +109,14 @@ impl ChessUi {
             }
         }
 
-        if let Some((from_pos, _)) = self.dragging_piece {
+        if let Some((from, _)) = self.dragging_piece {
             if let Some(mouse_pos) = ui.ctx().pointer_hover_pos() {
-                self.dragging_piece = Some((from_pos, mouse_pos));
-
-                if let Some(piece) = self.board[from_pos.row][from_pos.column] {
-                    let symbol = format!("{}", piece);
+                self.dragging_piece = Some((from, mouse_pos));
+                if let Some(piece) = self.board[from.row()][from.col()] {
                     painter.text(
                         mouse_pos,
                         egui::Align2::CENTER_CENTER,
-                        symbol.trim(),
+                        format!("{}", piece).trim(),
                         egui::FontId::proportional(square_size * 0.8),
                         if piece.color == PieceColor::White {
                             Color32::WHITE
@@ -154,13 +133,14 @@ impl ChessUi {
         }
     }
 
-    fn handle_move(&mut self, from: Position, to: Position) -> bool {
-        let chess_move = ChessMove { from, to };
-        if let Err(e) = make_move(&mut self.board, &chess_move) {
-            println!("Move error: {:?}", e);
-            return false;
-        }
-        return true;
+    fn handle_move(&mut self, from: Square, to: Square) -> bool {
+        let mv = ChessMove { from, to };
+        make_move(&mut self.board, &mv)
+            .map(|_| true)
+            .unwrap_or_else(|e| {
+                println!("Move error: {}", e);
+                false
+            })
     }
 
     fn switch_player(&mut self) {
