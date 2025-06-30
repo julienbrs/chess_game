@@ -1,5 +1,5 @@
 use crate::{
-    engine::chess_move::{ChessMove, Position, is_valid_move},
+    engine::chess_move::{ChessMove, is_valid_move},
     engine::piece::{Piece, PieceColor, PieceType},
 };
 
