@@ -1,4 +1,4 @@
-use crate::{
+use chess::engine::{
     board::{self, BoardFactory, BoardGame, BoardPosition, make_move, print_board},
     chess_move::{ChessMove, Position, parse_move},
     piece::{Piece, PieceColor, PieceType},
@@ -9,6 +9,7 @@ pub struct ChessUi {
     board: BoardGame,
     selected_position: Option<Position>,
     dragging_piece: Option<(Position, egui::Pos2)>,
+    current_player: PieceColor,
 }
 
 impl ChessUi {
@@ -17,6 +18,7 @@ impl ChessUi {
             board: BoardFactory::create(BoardPosition::Standard),
             selected_position: None,
             dragging_piece: None,
+            current_player: PieceColor::White,
         }
     }
 
@@ -94,12 +96,14 @@ impl ChessUi {
                     if ui.ctx().input(|i| i.pointer.primary_down()) && self.dragging_piece.is_none()
                     {
                         if let Some(piece) = self.board[board_y][board_x] {
-                            let position = Position {
-                                row: board_y,
-                                column: board_x,
-                            };
-                            self.dragging_piece = Some((position, mouse_pos));
-                            self.selected_position = Some(position);
+                            if piece.color == self.current_player {
+                                let position = Position {
+                                    row: board_y,
+                                    column: board_x,
+                                };
+                                self.dragging_piece = Some((position, mouse_pos));
+                                self.selected_position = Some(position);
+                            }
                         }
                     }
 
@@ -111,7 +115,9 @@ impl ChessUi {
                             };
 
                             if from_pos != to_pos {
-                                self.handle_move(from_pos, to_pos);
+                                if self.handle_move(from_pos, to_pos) {
+                                    self.switch_player();
+                                }
                             }
 
                             self.dragging_piece = None;
@@ -148,11 +154,20 @@ impl ChessUi {
         }
     }
 
-    fn handle_move(&mut self, from: Position, to: Position) {
+    fn handle_move(&mut self, from: Position, to: Position) -> bool {
         let chess_move = ChessMove { from, to };
         if let Err(e) = make_move(&mut self.board, &chess_move) {
             println!("Move error: {:?}", e);
+            return false;
         }
+        return true;
+    }
+
+    fn switch_player(&mut self) {
+        self.current_player = match self.current_player {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
     }
 }
 
@@ -162,4 +177,18 @@ impl eframe::App for ChessUi {
             self.draw_board(ui);
         });
     }
+}
+
+fn main() {
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::vec2(600.0, 600.0)),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "Chess Game",
+        options,
+        Box::new(|_cc| Box::new(ChessUi::new())),
+    )
+    .unwrap();
 }

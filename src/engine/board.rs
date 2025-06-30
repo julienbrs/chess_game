@@ -1,6 +1,6 @@
 use crate::{
-    chess_move::{ChessMove, Position, is_valid_move},
-    piece::{Piece, PieceColor, PieceType},
+    engine::chess_move::{ChessMove, Position, is_valid_move},
+    engine::piece::{Piece, PieceColor, PieceType},
 };
 
 pub type BoardGame = [[Option<Piece>; 8]; 8];

@@ -1,6 +1,6 @@
 use crate::{
-    board::BoardGame,
-    piece::{PieceColor, PieceType},
+    engine::board::BoardGame,
+    engine::piece::{PieceColor, PieceType},
 };
 use std::fmt;
 

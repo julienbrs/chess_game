@@ -535,6 +535,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chess"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "rand 0.9.0",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1179,15 +1188,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef89398e90033fc6bc65e9bd42fd29bbbfd483bda5b56dc5562f455550618165"
 dependencies = [
  "gl_generator",
-]
-
-[[package]]
-name = "guessing_game"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui",
- "rand 0.9.0",
 ]
 
 [[package]]
