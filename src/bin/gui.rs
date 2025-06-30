@@ -1,7 +1,7 @@
 use chess::engine::{
-    board::{self, BoardFactory, BoardGame, BoardPosition, make_move, print_board},
-    chess_move::{ChessMove, Square, parse_move},
-    piece::{Piece, PieceColor, PieceType},
+    board::{ BoardFactory, BoardGame, BoardPosition, make_move},
+    chess_move::{ChessMove, Square},
+    piece::{PieceColor},
 };
 use egui::{Color32, Rect, Vec2};
 

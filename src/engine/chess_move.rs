@@ -4,7 +4,6 @@ use crate::{
     engine::piece::{PieceColor, PieceType},
 };
 use std::fmt;
-use std::io::IntoInnerError;
 
 #[derive(Debug)]
 pub enum MoveError {
@@ -166,15 +165,13 @@ pub fn is_valid_move(board: &BoardGame, move_: &ChessMove) -> Result<(), MoveErr
 
                 if row_diff == direction {
                     // Single step
-                    if board[(from_row as i32 + direction) as usize][from_col].is_some() {
+                    if board[to_row][from_col].is_some() {
                         return Err(MoveError::PieceBlocking);
                     }
                 } else if row_diff == 2 * direction && from_row == start_row {
                     let intermediate_row = (from_row as i32 + direction) as usize;
-                    let target_row = (from_row as i32 + 2 * direction) as usize;
-
                     if board[intermediate_row][from_col].is_some()
-                        || board[target_row][from_col].is_some()
+                        || board[to_row][from_col].is_some()
                     {
                         return Err(MoveError::PieceBlocking);
                     }
@@ -201,6 +198,7 @@ pub fn is_valid_move(board: &BoardGame, move_: &ChessMove) -> Result<(), MoveErr
                 if board[row][col].is_some() {
                     return Err(MoveError::PieceBlocking);
                 }
+                current = next;
             }
         }
         PieceType::Knight => {
@@ -232,6 +230,7 @@ pub fn is_valid_move(board: &BoardGame, move_: &ChessMove) -> Result<(), MoveErr
                 if board[row][col].is_some() {
                     return Err(MoveError::PieceBlocking);
                 }
+                current = next;
             }
         }
         PieceType::King => {
